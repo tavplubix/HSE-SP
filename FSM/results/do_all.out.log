@@ -1,0 +1,31 @@
+Generating FSM, writing its description to fsm.txt
+Uploading fsm.txt as 23307_fsm.txt:	{"files": [{"name": "23307_fsm.txt", "type": "text/plain", "size": 1482, "url": "data/23307_fsm.txt", "deleteUrl": "delete/23307_fsm.txt", "deleteType": "DELETE"}]}
+
+Validating:	OK
+
+Is deterministic:	OK
+
+Is fully defined:	OK
+
+Is connected:	OK
+
+Is reduced:	OK
+
+Num states:	4
+
+Gen tests with m=4:	See tests in 'fsm.txt.tests'
+Running tests:	OK
+Logs written to tests.out.log
+Running tests using unittest module:	OK
+Logs written to unit_tests.out.log
+Running mutation tests:	OK
+Logs written to mut_tests.out.log
+
+[*] Mutation score [5.52060 s]: 85.7%
+   - all: 35
+   - killed: 29 (82.9%)
+   - survived: 5 (14.3%)
+   - incompetent: 0 (0.0%)
+   - timeout: 1 (2.9%)
+
+Moving all produced files to 'results/' dir

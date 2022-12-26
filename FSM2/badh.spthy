@@ -1,0 +1,184 @@
+/*
+1. C -[g^x]-> S
+2. C <-[g^y, pk_S, sig_S(g^x, g^y)]- S
+3. C -[pk_C, sig_C(g^y, g^x)]-> S
+*/
+
+// Send(кто, кому, что)
+// Receive(кто, от кого, что)
+
+theory BADH
+begin
+
+builtins: signing, diffie-hellman
+
+// Client
+rule Clnt_Step_1:
+let
+    pk_C = pk(~pr_C)
+    g_x = 'g'^(~x)
+in
+    [       
+        Fr(~pr_C),
+        Fr(~x)
+    ]
+    --[
+        Send_1($Client, $Server, g_x)
+    ]->
+    [
+        Out(g_x),
+        !Clnt_Step_1(~pr_C, pk_C, ~x, g_x)
+    ]
+
+rule Clnt_Step_2:
+let
+    serv_mess = <g_x, g_y>
+    clnt_mess = <g_y, g_x>
+    clnt_mess_sign = sign(clnt_mess, ~pr_C)
+    client_key = g_y^(~x)
+in
+    [
+        !Clnt_Step_1(~pr_C, pk_C, ~x, g_x),
+        In(<g_y, pk_S, serv_mess_sign>)
+    ]
+    --[
+        Eq(verify(serv_mess_sign, serv_mess, pk_S), true),
+        Receive_2($Client, $Server, <g_y, pk_S, serv_mess_sign>),
+        Send_3($Client, $Server, <pk_C, clnt_mess_sign>),
+        Client_Finished($Client, client_key)
+    ]->
+    [
+        Out(<pk_C, clnt_mess_sign>),
+        !Clnt_Step_2(client_key, pk_S, g_y)
+    ]
+
+// Server
+rule Serv_Step_1:
+let
+    pk_S = pk(~pr_S)
+    g_y = 'g'^(~y)
+    serv_mess = <g_x, g_y>
+    serv_mess_sign = sign(serv_mess, ~pr_S)
+    server_key = g_x^(~y)
+in
+    [
+        Fr(~pr_S),
+        Fr(~y),
+        In(g_x)
+    ]
+    --[
+        Receive_1($Server, $Client, g_x),
+        Send_2($Server, $Client, <g_y, pk_S, serv_mess_sign>)
+    ]->
+    [
+        !Serv_Step_1(~pr_S, pk_S, ~y, g_y, g_x, server_key),
+        Out(<g_y, pk_S, serv_mess_sign>)
+    ]
+
+rule Serv_Step_2:
+let
+    clnt_mess = <g_y, g_x>
+in
+    [
+        !Serv_Step_1(~pr_S, pk_S, ~y, g_y, g_x, server_key),
+        In(<pk_C, clnt_mess_sign>)
+    ]
+    --[
+        Eq(verify(clnt_mess_sign, clnt_mess, pk_C), true),
+        Receive_3($Server, $Client, <pk_C, clnt_mess_sign>),
+        Server_Finished($Server, server_key)
+    ]->
+    [
+        !Serv_Step_2(pk_C)
+    ]
+
+restriction Equality:
+    "All x y #i. Eq(x,y) @i ==> x = y"
+
+
+// lemmas
+lemma executable_1:
+    exists-trace
+    "Ex Client Server mess #i #j. 
+        Receive_1(Server, Client, mess) @i & 
+        Send_1(Client, Server, mess) @j
+    "
+
+lemma executable_2:
+    exists-trace
+    "Ex Client Server mess #i #j. 
+        Receive_2(Server, Client, mess) @i & 
+        Send_2(Client, Server, mess) @j
+    "
+
+lemma executable_3:
+    exists-trace
+    "Ex Client Server mess #i #j. 
+        Receive_3(Server, Client, mess) @i & 
+        Send_3(Client, Server, mess) @j
+    "
+
+lemma executable_Finished:
+    exists-trace
+    "Ex Client Server key #i #j. 
+        Client_Finished(Client, key) @i & 
+        Server_Finished(Server, key) @j
+    "
+
+lemma Key_secrecy:
+    all-traces
+    "All Client Server key 
+         #t1 #t2.
+    (
+        Client_Finished(Client, key) @t1 & 
+        Server_Finished(Server, key) @t2
+    )
+    ==>
+    (
+        not
+        (
+            Ex #k.
+            (
+                K(key) @ #k
+            )
+        )
+    )
+    "
+
+lemma auth_1:
+    "All Client Server key mess 
+         #t1 #t2 #t. 
+    (
+        Client_Finished(Client, key) @t1 & 
+        Server_Finished(Server, key) @t2 &
+        Receive_1(Server, Client, mess) @t
+    )
+    ==> 
+        (Ex #j. Send_1(Client, Server, mess) @j & j<t)
+    "
+
+lemma auth_2:
+    "All Client Server key mess 
+         #t1 #t2 #t. 
+    (
+        Client_Finished(Client, key) @t1 & 
+        Server_Finished(Server, key) @t2 &
+        Receive_2(Client, Server, mess) @t
+    )
+    ==> 
+        (Ex #j. Send_2(Server, Client, mess) @j & j<t)
+    "
+
+lemma auth_3:
+    "All Client Server key mess 
+         #t1 #t2 #t. 
+    (
+        Client_Finished(Client, key) @t1 & 
+        Server_Finished(Server, key) @t2 &
+        Receive_3(Server, Client, mess) @t
+    )
+    ==> 
+        (Ex #j. Send_3(Client, Server, mess) @j & j<t)
+    "
+
+end

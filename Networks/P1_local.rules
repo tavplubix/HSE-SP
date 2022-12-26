@@ -1,0 +1,43 @@
+# Alexander Tokmakov HSE
+
+# Rules for Sequence generation:
+# Each probe is a TCP SYN packet => flag S
+# The window field is ...
+alert tcp any any -> any any (sid: 1000001; msg: "SG-1"; flags: S; window: 1)
+alert tcp any any -> any any (sid: 1000002; msg: "SG-2"; flags: S; window: 63)
+alert tcp any any -> any any (sid: 1000003; msg: "SG-3"; flags: S; window: 4)
+alert tcp any any -> any any (sid: 1000004; msg: "SG-4"; flags: S; window: 4)
+alert tcp any any -> any any (sid: 1000005; msg: "SG-5"; flags: S; window: 16)
+alert tcp any any -> any any (sid: 1000006; msg: "SG-6"; flags: S; window: 512)
+
+# Rules for ICMP echo:
+
+# two ICMP echo request (itype 8)
+# The first one has the IP DF bit set, a type-of-service (TOS) byte value of zero, a code of nine (even though it should be zero), the sequence number 295, a random IP ID and ICMP request identifier, and 120 bytes of 0x00 for the data payload.
+alert icmp any any -> any any (sid: 1000007; msg: "IE-1"; itype: 8; fragbits: D; tos: 0; icode: 9; icmp_seq: 295; pcre: "/\x00{120}/"; dsize: 120)
+# The second ping query is similar, except a TOS of four (IP_TOS_RELIABILITY) is used, the code is zero, 150 bytes of data is sent, and the ICMP request ID and sequence numbers are incremented by one from the previous query values.
+# не написано про D, но это дебажится
+alert icmp any any -> any any (sid: 1000008; msg: "IE-2"; itype: 8; tos: 4; icode: 0; icmp_seq: 296; pcre: "/\x00{150}/"; dsize: 150)
+
+# Rules for TCP explicit congestion notification:
+# a SYN packet which also has the ECN CWR and ECE congestion control flags set. The acknowledgment number is zero, sequence number is random, window size field is three
+alert tcp any any -> any any (sid: 1000009; msg: "ECN-1"; flags: ESC; window: 3; ack: 0)
+
+# Rules for TCP:
+
+#  null (no flags set) packet with the IP DF bit set and a window field of 128
+alert tcp any any -> any any (sid: 1000010; msg: "T-2"; flags: 0; fragbits: D; window: 128)
+#  packet with the SYN, FIN, URG, and PSH flags set and a window field of 256 to an open port. The IP DF bit is not set.
+alert tcp any any -> any any (sid: 1000011; msg: "T-3"; flags: SFUP; window: 256; fragbits: !D)
+#  ACK packet with IP DF and a window field of 1024 to an open port
+alert tcp any any -> any any (sid: 1000012; msg: "T-4"; flags: A; fragbits: D; window: 1024)
+#  SYN packet without IP DF and a window field of 31337 to a closed port
+alert tcp any any -> any any (sid: 1000013; msg: "T-5"; flags: S; fragbits: !D; window: 31337)
+#  ACK packet with IP DF and a window field of 32768 to a closed port
+alert tcp any any -> any any (sid: 1000014; msg: "T-6"; flags: A; fragbits: D; window: 32768)
+#  packet with the FIN, PSH, and URG flags set and a window field of 65535 to a closed port. The IP DF bit is not set
+alert tcp any any -> any any (sid: 1000015; msg: "T-7"; flags: FPU; window: 65535; fragbits: !D)
+
+# Rules for UDP:
+#  The character ‘C’ (0x43) is repeated 300 times for the data field. The IP ID value is set to 0x1042 
+alert udp any any -> any any (sid: 1000016; msg: "U-1"; pcre: "/\x43{300}/"; dsize: 300; id: 4162) 
